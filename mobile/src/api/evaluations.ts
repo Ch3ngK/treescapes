@@ -30,6 +30,20 @@ export type Evaluation = {
     responses: EvaluationResponse[];
 };
 
+export type CreateEvaluationPayload = {
+    site_id: number;
+    template_id: number;
+    evaluation_date: string;
+    general_comments: string | null;
+    site_in_charge_name: string | null;
+    horticulturist_in_charge_name: string | null;
+    responses: {
+        checklist_item_id: number;
+        score: number;
+        remarks: string | null;
+    }[];
+};
+
 export async function getEvaluationsForSite(
     token: string,
     siteId: number
@@ -71,4 +85,24 @@ export async function getEvaluationById(
     }
 
     return response.json();
+}
+
+export async function createEvaluation(
+  token: string,
+  payload: CreateEvaluationPayload
+): Promise<Evaluation> {
+  const response = await fetch(`${API_BASE_URL}/evaluations`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to create evaluation.");
+  }
+
+  return response.json();
 }
