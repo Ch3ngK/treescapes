@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, SafeAreaView, Text, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { RouteProp } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { RootStackParamList } from "../../navigation/types";
 import { useAuth } from "../auth/AuthContext";
 import { Evaluation, getEvaluationById } from "../../api/evaluations";
+import { colors, radii, spacing, typography } from "../../theme/designSystem";
+import { EmptyState, LoadingState, SectionEyebrow, StatusBadge, SurfaceCard } from "../../theme/ui";
 
 type EvaluationDetailProp = RouteProp<RootStackParamList, "EvaluationDetail">;
 
@@ -46,67 +49,239 @@ export function EvaluationDetailScreen({ route }: Props) {
 
     if (loading) {
         return (
-            <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center"}}>
-                <ActivityIndicator />
+            <SafeAreaView style={styles.safeArea}>
+                <LoadingState message="Loading evaluation details..." />
             </SafeAreaView>
-        )
+        );
     };
 
     if (error) {
         return(
-            <SafeAreaView style={{ flex: 1, padding: 24 }}>
-                <Text>{error}</Text>
+            <SafeAreaView style={styles.safeArea}>
+                <EmptyState
+                    title="Unable to load evaluation"
+                    message={error}
+                />
             </SafeAreaView>
-        )
+        );
     };
 
     if (!evaluation) {
         return (
-            <SafeAreaView style={{ flex: 1, padding: 24 }}>
-                <Text>Evaluation not found.</Text>
+            <SafeAreaView style={styles.safeArea}>
+                <EmptyState
+                    title="Evaluation not found"
+                    message="The selected evaluation could not be found."
+                />
             </SafeAreaView>
-        )
+        );
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, padding: 24 }}>
-        <Text style={{ fontSize: 28, fontWeight: "700" }}>
-            Evaluation #{evaluation.id}
-        </Text>
-        <Text>Date: {evaluation.evaluation_date}</Text>
-        <Text>Score: {evaluation.percentage}%</Text>
-        <Text>Status: {evaluation.status}</Text>
-        <Text>Total Score: {evaluation.total_score}</Text>
-        <Text>Benchmark: {evaluation.benchmark_band ?? "N/A"}</Text>
-        <Text>General Comments: {evaluation.general_comments ?? "No comments"}</Text>
-        
-        <Text style={{ fontSize: 20, fontWeight: "700", marginBottom: 12 }}>
-            Responses
-        </Text>
+        <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
+            <ScrollView contentContainerStyle={styles.content}>
+                <View style={styles.heroCard}>
+                    <StatusBadge label={evaluation.status} tone="dark" />
+                    <SectionEyebrow onDark>Evaluation overview</SectionEyebrow>
+                    <Text style={styles.heroTitle}>Evaluation #{evaluation.id}</Text>
+                    <Text style={styles.heroSubtitle}>{evaluation.evaluation_date}</Text>
 
-        <FlatList
-            data={evaluation.responses}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-            <View
-                style={{
-                paddingVertical: 12,
-                borderBottomWidth: 1,
-                borderBottomColor: "#ddd",
-                }}
-            >
-                <Text style={{ fontWeight: "700" }}>
-                    {item.checklist_item.code}
-                </Text>
-                <Text>{item.checklist_item.description}</Text>
-                <Text>
-                    Score: {item.score} / {item.checklist_item.max_points}
-                </Text>
-                <Text>Remarks: {item.remarks ?? "No remarks"}</Text>
-            </View>
-        )}
-        ListEmptyComponent={<Text>No responses found for this evaluation.</Text>}
-      />
-    </SafeAreaView>
+                    <View style={styles.metricRow}>
+                        <View style={styles.metricCard}>
+                            <Text style={styles.metricValue}>{evaluation.percentage}%</Text>
+                            <Text style={styles.metricLabel}>Overall Score</Text>
+                        </View>
+                        <View style={styles.metricCard}>
+                            <Text style={styles.metricValue}>{evaluation.total_score}</Text>
+                            <Text style={styles.metricLabel}>Total Points</Text>
+                        </View>
+                        <View style={styles.metricCard}>
+                            <Text style={styles.metricValue}>{evaluation.responses.length}</Text>
+                            <Text style={styles.metricLabel}>Responses</Text>
+                        </View>
+                    </View>
+                </View>
+
+                <SurfaceCard>
+                    <Text style={styles.sectionTitle}>Assessment notes</Text>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Benchmark</Text>
+                        <Text style={styles.detailValue}>{evaluation.benchmark_band ?? "Not assigned"}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Site in charge</Text>
+                        <Text style={styles.detailValue}>{evaluation.site_in_charge_name ?? "Not provided"}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Horticulturist</Text>
+                        <Text style={styles.detailValue}>
+                            {evaluation.horticulturist_in_charge_name ?? "Not provided"}
+                        </Text>
+                    </View>
+                    <View style={styles.commentBlock}>
+                        <Text style={styles.detailLabel}>General comments</Text>
+                        <Text style={styles.commentText}>
+                            {evaluation.general_comments ?? "No general comments were added."}
+                        </Text>
+                    </View>
+                </SurfaceCard>
+
+                <View style={styles.responsesHeader}>
+                    <SectionEyebrow>Checklist responses</SectionEyebrow>
+                    <Text style={styles.responsesTitle}>Recorded observations</Text>
+                </View>
+
+                {evaluation.responses.length === 0 ? (
+                    <EmptyState
+                        title="No responses recorded"
+                        message="This evaluation does not have any checklist responses yet."
+                    />
+                ) : (
+                    evaluation.responses.map((item) => (
+                        <SurfaceCard key={item.id} style={styles.responseCard}>
+                            <View style={styles.responseTopRow}>
+                                <StatusBadge label={item.checklist_item.code} tone="info" />
+                                <Text style={styles.scoreValue}>
+                                    {item.score} / {item.checklist_item.max_points}
+                                </Text>
+                            </View>
+                            <Text style={styles.responseTitle}>{item.checklist_item.description}</Text>
+                            <Text style={styles.responseRemarks}>
+                                {item.remarks ?? "No remarks were added for this item."}
+                            </Text>
+                            {item.image_url ? (
+                                <>
+                                    <Image
+                                        source={{ uri: item.image_url }}
+                                        style={styles.responseImage}
+                                        resizeMode="cover"
+                                    />
+                                    <Text style={styles.imageLabel}>Field image attached</Text>
+                                </>
+                            ) : (
+                                <Text style={styles.imagePlaceholder}>No image attached</Text>
+                            )}
+                        </SurfaceCard>
+                    ))
+                )}
+            </ScrollView>
+        </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    safeArea: {
+        flex: 1,
+        backgroundColor: colors.surface,
+    },
+    content: {
+        padding: spacing.lg,
+        paddingBottom: spacing.section,
+        gap: spacing.md,
+    },
+    heroCard: {
+        backgroundColor: colors.brandTealDeep,
+        borderRadius: radii.xl,
+        padding: spacing.xl,
+    },
+    heroTitle: {
+        ...typography.heroTitle,
+        color: colors.onDark,
+        marginTop: spacing.sm,
+    },
+    heroSubtitle: {
+        ...typography.body,
+        color: colors.onDarkMuted,
+        marginTop: spacing.xs,
+    },
+    metricRow: {
+        flexDirection: "row",
+        gap: spacing.sm,
+        marginTop: spacing.lg,
+    },
+    metricCard: {
+        flex: 1,
+        backgroundColor: colors.brandTealMid,
+        borderRadius: radii.lg,
+        padding: spacing.md,
+    },
+    metricValue: {
+        ...typography.heading2,
+        color: colors.onDark,
+    },
+    metricLabel: {
+        ...typography.bodySm,
+        color: colors.onDarkMuted,
+        marginTop: spacing.xxs,
+    },
+    sectionTitle: {
+        ...typography.heading3,
+        color: colors.ink,
+        marginBottom: spacing.md,
+    },
+    detailRow: {
+        marginBottom: spacing.md,
+    },
+    detailLabel: {
+        ...typography.caption,
+        color: colors.steel,
+        textTransform: "uppercase",
+        letterSpacing: 0.8,
+    },
+    detailValue: {
+        ...typography.body,
+        color: colors.ink,
+        marginTop: spacing.xxs,
+    },
+    commentBlock: {
+        marginTop: spacing.xs,
+    },
+    commentText: {
+        ...typography.body,
+        color: colors.slate,
+        marginTop: spacing.xs,
+    },
+    responsesHeader: {
+        marginTop: spacing.xs,
+    },
+    responsesTitle: {
+        ...typography.heading2,
+        color: colors.ink,
+        marginTop: spacing.xs,
+    },
+    responseCard: {
+        gap: spacing.sm,
+    },
+    responseTopRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: spacing.sm,
+    },
+    responseTitle: {
+        ...typography.heading3,
+        color: colors.ink,
+    },
+    scoreValue: {
+        ...typography.bodySmStrong,
+        color: colors.brandGreenDark,
+    },
+    responseRemarks: {
+        ...typography.body,
+        color: colors.slate,
+    },
+    responseImage: {
+        width: "100%",
+        height: 200,
+        borderRadius: radii.lg,
+        backgroundColor: colors.surfaceSoft,
+    },
+    imageLabel: {
+        ...typography.bodySmStrong,
+        color: colors.ink,
+    },
+    imagePlaceholder: {
+        ...typography.bodySm,
+        color: colors.steel,
+    },
+});

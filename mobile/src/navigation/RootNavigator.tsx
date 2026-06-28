@@ -9,6 +9,7 @@ import { SiteDetailScreen } from "../features/dashboard/SiteDetailScreen";
 import { EvaluationDetailScreen } from "../features/dashboard/EvaluationDetailScreen";
 import { CreateEvaluationScreen } from "../features/dashboard/CreateEvaluationsScreen";
 import { RootStackParamList } from "./types";
+import { colors, navigationTheme, typography } from "../theme/designSystem";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -16,8 +17,23 @@ export function RootNavigator() {
     const { token } = useAuth();
 
     return (
-        <NavigationContainer>
-            <Stack.Navigator>
+        <NavigationContainer theme={navigationTheme}>
+            <Stack.Navigator
+                screenOptions={{
+                    headerStyle: {
+                        backgroundColor: colors.canvas,
+                    },
+                    headerTintColor: colors.ink,
+                    headerTitleStyle: {
+                        ...typography.heading3,
+                        color: colors.ink,
+                    },
+                    headerShadowVisible: false,
+                    contentStyle: {
+                        backgroundColor: colors.surface,
+                    },
+                }}
+            >
                 {!token ? (
                     <Stack.Screen
                         name="Login"
@@ -29,25 +45,25 @@ export function RootNavigator() {
                         <Stack.Screen
                             name="Sites"
                             component={SitesScreen}
-                            options={{ title: "Sites" }}
+                            options={{ title: "Field Dashboard" }}
                         />
                         
                         <Stack.Screen 
                             name="SiteDetail"
                             component={SiteDetailScreen}
-                            options={{ title: "Site Detail" }}
+                            options={({ route }) => ({ title: route.params.siteName })}
                         />
 
                         <Stack.Screen
                             name="EvaluationDetail"
                             component={EvaluationDetailScreen}
-                            options={{ title: "Evaluation Detail" }}
+                            options={{ title: "Evaluation Overview" }}
                         />
                         
                         <Stack.Screen
                             name="CreateEvaluation"
                             component={CreateEvaluationScreen}
-                            options={{ title: "Create evaluation" }}
+                            options={{ title: "Create Evaluation" }}
                         />
                     </>
                 )}

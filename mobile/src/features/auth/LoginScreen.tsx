@@ -1,8 +1,25 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Button, StyleSheet, Image, Text, TextInput, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Image,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { loginRequest } from "../../api/auth";
 import { useAuth } from "./AuthContext";
+import { colors, radii, spacing, typography } from "../../theme/designSystem";
+import {
+  FormInput,
+  PillButton,
+  SectionEyebrow,
+  StatusBadge,
+  SurfaceCard,
+} from "../../theme/ui";
 
 export function LoginScreen() {
     const { signIn } = useAuth();
@@ -27,74 +44,140 @@ export function LoginScreen() {
     }
 
     return (
-        <View style={styles.container}>
-            <Image 
-                source={require("../../../assets/treescapes_pte_ltd_logo.jpg")}
-                style={styles.logo}
-                resizeMode="contain"
-            />
-            <Text style={styles.title}>Treescapes Login</Text>
-        
+        <SafeAreaView style={styles.safeArea}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={styles.keyboardWrapper}
+          >
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.heroCard}>
+                <StatusBadge label="Field operations" tone="dark" />
+                <Image
+                  source={require("../../../assets/treescapes_pte_ltd_logo.jpg")}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+                <SectionEyebrow onDark>Treescapes</SectionEyebrow>
+                <Text style={styles.heroTitle}>Inspect sites with a clearer, faster workflow.</Text>
+                <Text style={styles.heroSubtitle}>
+                  Sign in to review your assigned sites, record evaluation scores, and attach field
+                  evidence in one place.
+                </Text>
+              </View>
 
-            <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Email"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                style={styles.input}
-            />
+              <SurfaceCard style={styles.formCard}>
+                <SectionEyebrow>Welcome back</SectionEyebrow>
+                <Text style={styles.title}>Log in to your dashboard</Text>
+                <Text style={styles.subtitle}>
+                  Use your Treescapes account to continue your daily site checks.
+                </Text>
 
-            <TextInput 
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Password"
-                secureTextEntry
-                style={styles.input}
-            />
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Email</Text>
+                  <FormInput
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="name@company.com"
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    autoCorrect={false}
+                  />
+                </View>
 
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Password</Text>
+                  <FormInput
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Enter password"
+                    secureTextEntry
+                  />
+                </View>
 
-            {loading ? (
-                <ActivityIndicator/> // React Native's loading spinner.
-            ) : (
-                <Button title="login" onPress={handleLogin} />
-            )}
-        </View>
+                {error ? (
+                  <View style={styles.errorBanner}>
+                    <Text style={styles.error}>{error}</Text>
+                  </View>
+                ) : null}
+
+                <PillButton
+                  title={loading ? "Signing in..." : "Log In"}
+                  onPress={handleLogin}
+                  disabled={loading}
+                />
+              </SurfaceCard>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
+    backgroundColor: colors.surface,
+  },
+  keyboardWrapper: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    padding: spacing.lg,
     justifyContent: "center",
-    padding: 24,
-    backgroundColor: "#f5f3ea",
+    gap: spacing.lg,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: 24,
-    color: "#24412f",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#b7c2b8",
-    backgroundColor: "#ffffff",
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 12,
-  },
-  error: {
-    color: "#b42318",
-    marginBottom: 12,
+  heroCard: {
+    backgroundColor: colors.brandTealDeep,
+    borderRadius: radii.xl,
+    padding: spacing.xl,
+    gap: spacing.sm,
   },
   logo: {
-    width: 180,
-    height: 80,
-    alignSelf: "center",
-    marginBottom: 20,
+    width: 96,
+    height: 96,
+    borderRadius: radii.lg,
+    backgroundColor: colors.canvas,
+    marginTop: spacing.md,
+  },
+  heroTitle: {
+    ...typography.heroTitle,
+    color: colors.onDark,
+    marginTop: spacing.xs,
+  },
+  heroSubtitle: {
+    ...typography.body,
+    color: colors.onDarkMuted,
+  },
+  formCard: {
+    gap: spacing.md,
+  },
+  title: {
+    ...typography.heading1,
+    color: colors.ink,
+  },
+  subtitle: {
+    ...typography.bodySm,
+    color: colors.steel,
+    marginTop: -spacing.xs,
+  },
+  fieldGroup: {
+    gap: spacing.xs,
+  },
+  label: {
+    ...typography.bodySmStrong,
+    color: colors.ink,
+  },
+  errorBanner: {
+    backgroundColor: colors.dangerBg,
+    borderRadius: radii.md,
+    padding: spacing.md,
+  },
+  error: {
+    ...typography.bodySm,
+    color: colors.dangerText,
   },
 });
-
