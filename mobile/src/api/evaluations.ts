@@ -12,6 +12,7 @@ export type EvaluationResponse = {
     };
     score: number;
     remarks: string | null;
+    image_url: string | null;
 }
 
 export type Evaluation = {
@@ -41,6 +42,7 @@ export type CreateEvaluationPayload = {
         checklist_item_id: number;
         score: number;
         remarks: string | null;
+        image_url: string | null;
     }[];
 };
 
