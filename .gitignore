@@ -4,5 +4,6 @@ __pycache__/
 *.pyc
 mobile/node_modules/
 mobile/.expo/
+mobile/src/api/config.ts
 treescapes-mobile/
 tmp_pdf_images/

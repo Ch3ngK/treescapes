@@ -29,6 +29,8 @@ export type Evaluation = {
     horticulturist_in_charge_name: string | null;
     status: string;
     responses: EvaluationResponse[];
+    site_in_charge_signature_url: string | null;
+    horticulturist_in_charge_signature_url: string | null; 
 };
 
 export type CreateEvaluationPayload = {
@@ -44,6 +46,8 @@ export type CreateEvaluationPayload = {
         remarks: string | null;
         image_url: string | null;
     }[];
+    site_in_charge_signature_url: string | null;
+    horticulturist_in_charge_signature_url: string | null; 
 };
 
 export async function getEvaluationsForSite(

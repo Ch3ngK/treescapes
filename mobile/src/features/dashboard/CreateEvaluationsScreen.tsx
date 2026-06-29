@@ -1,8 +1,9 @@
 import * as ImagePicker from "expo-image-picker"
+import * as FileSystem from "expo-file-system/legacy"
 
 import { useAuth } from "../auth/AuthContext";
 import React, { useState, useEffect } from "react";
-import { Image, ScrollView, StyleSheet, Text, View, Modal } from "react-native";
+import { Alert, Image, ScrollView, StyleSheet, Text, View, Modal } from "react-native";
 import { RouteProp, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import SignatureCanvas from "react-native-signature-canvas";
@@ -127,7 +128,7 @@ export function CreateEvaluationScreen({ route }: Props) {
         return uri.startsWith("http://") || uri.startsWith("https://");
     }
     
-    async function pickImage(itemId: number) {
+    async function pickImageFromLibrary(itemId: number) {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
         
         if (!permissionResult.granted) {
@@ -149,16 +150,62 @@ export function CreateEvaluationScreen({ route }: Props) {
         updateImage(itemId, selectedUri);
     }
 
+    async function takePhoto(itemId: number) {
+        const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+
+        if (!permissionResult.granted) {
+            setFormError("Permission to use the camera is required.");
+            return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ["images"],
+            allowsEditing: true,
+            quality: 0.8,
+        });
+
+        if (result.canceled) {
+            return;
+        }
+
+        const selectedUri = result.assets[0]?.uri ?? null;
+        updateImage(itemId, selectedUri);
+    }
+
+    function pickImage(itemId: number) {
+        Alert.alert("Attach Image", "Choose how you want to add the image.", [
+            {
+                text: "Take Photo",
+                onPress: () => void takePhoto(itemId),
+            },
+            {
+                text: "Choose from Library",
+                onPress: () => void pickImageFromLibrary(itemId),
+            },
+            {
+                text: "Cancel",
+                style: "cancel",
+            },
+        ]);
+    }
+
     function openSignaturePad(signer: "site" | "horticulturist") {
         setActiveSigner(signer);
         setSignatureModalVisible(true);
     }
 
-    function handleSignatureSaved(signatureUri: string) {
+    async function handleSignatureSaved(signatureDataUrl: string) {
+        const base64Data = signatureDataUrl.replace("data:image/png;base64,", "");
+        const fileUri = `${FileSystem.cacheDirectory}signature-${Date.now()}.png`;
+        
+        await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+            encoding: FileSystem.EncodingType.Base64,
+        });
+
         if (activeSigner === "site") {
-            setSiteSignatureUri(signatureUri);
+            setSiteSignatureUri(fileUri);
         } else if (activeSigner === "horticulturist") {
-            setHorticulturistSignatureUri(signatureUri);
+            setHorticulturistSignatureUri(fileUri);
         }
 
         setSignatureModalVisible(false);
@@ -167,7 +214,9 @@ export function CreateEvaluationScreen({ route }: Props) {
 
     // Converts the form data in React state into the exact object the backend expects when creating an evaluation.
     function buildPayload(
-        responsesToSubmit: Record<number, { score: string; remarks: string; image_url: string | null }>
+        responsesToSubmit: Record<number, { score: string; remarks: string; image_url: string | null }>,
+        siteSignatureUrl: string | null,
+        horticulturistSignatureUrl: string| null,
     ): CreateEvaluationPayload {
         if (!template) {
             throw new Error("Checklist template is missing");
@@ -191,6 +240,8 @@ export function CreateEvaluationScreen({ route }: Props) {
             horticulturist_in_charge_name: horticulturistInChargeName.trim()
                 ? horticulturistInChargeName
                 : null,
+            site_in_charge_signature_url: siteSignatureUrl,
+            horticulturist_in_charge_signature_url: horticulturistSignatureUrl,
             responses: formattedResponses,
         };
     }
@@ -273,8 +324,29 @@ export function CreateEvaluationScreen({ route }: Props) {
                     }
                 }
             }
+            
+            let uploadedSiteSignatureUrl = siteSignatureUri;
+            let uploadedHorticulturistSignatureUrl = horticulturistSignatureUri;
 
-            const payload = buildPayload(uploadedResponses);
+            if (uploadedSiteSignatureUrl && !isRemoteImageUrl(uploadedSiteSignatureUrl)) {
+                const uploadedSignature = await uploadEvidence(token, uploadedSiteSignatureUrl);
+                uploadedSiteSignatureUrl = uploadedSignature.url;
+            }
+
+            if (
+                uploadedHorticulturistSignatureUrl && 
+                !isRemoteImageUrl(uploadedHorticulturistSignatureUrl)
+            ) {
+                const uploadedSignature = await uploadEvidence(token, uploadedHorticulturistSignatureUrl);
+                uploadedHorticulturistSignatureUrl = uploadedSignature.url; 
+            }
+
+            const payload = buildPayload(
+                uploadedResponses,
+                uploadedSiteSignatureUrl,
+                uploadedHorticulturistSignatureUrl,
+            );
+            
             const savedEvaluation = await createEvaluation(token, payload);
             navigation.replace("EvaluationDetail", {
                 evaluationId: savedEvaluation.id,

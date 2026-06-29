@@ -165,6 +165,32 @@ export function EvaluationDetailScreen({ route }: Props) {
                             {evaluation.general_comments ?? "No general comments were added."}
                         </Text>
                     </View>
+                    
+                    <View style={styles.commentBlock}>
+                        <Text style={styles.detailLabel}>Site in charge signature</Text>
+                        {evaluation.site_in_charge_signature_url ? (
+                            <Image
+                                source={{ uri: evaluation.site_in_charge_signature_url }}
+                                style={styles.responseImage}
+                                resizeMode="contain"
+                            />
+                        ) : (
+                            <Text style={styles.imagePlaceholder}>No site-in-charge signature</Text>
+                        )}
+                    </View>
+
+                    <View style={styles.commentBlock}>
+                        <Text style={styles.detailLabel}>Horticulturist signature</Text>
+                        {evaluation.horticulturist_in_charge_signature_url ? (
+                            <Image
+                                source={{ uri: evaluation.horticulturist_in_charge_signature_url }}
+                                style={styles.responseImage}
+                                resizeMode="contain"
+                            />
+                        ) : (
+                            <Text style={styles.imagePlaceholder}>No horticulturist signature</Text>
+                        )}
+                    </View>
                 </SurfaceCard>
 
                 <View style={styles.responsesHeader}>
