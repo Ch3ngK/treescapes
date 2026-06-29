@@ -1,15 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
-import { RouteProp } from "@react-navigation/native";
+import { Alert, Image, ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
+import { RouteProp, useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { PillButton } from "../../theme/ui";
 
 import { RootStackParamList } from "../../navigation/types";
 import { useAuth } from "../auth/AuthContext";
-import { Evaluation, getEvaluationById } from "../../api/evaluations";
+import { Evaluation, getEvaluationById, deleteEvaluation } from "../../api/evaluations";
 import { colors, radii, spacing, typography } from "../../theme/designSystem";
 import { EmptyState, LoadingState, SectionEyebrow, StatusBadge, SurfaceCard } from "../../theme/ui";
 
 type EvaluationDetailProp = RouteProp<RootStackParamList, "EvaluationDetail">;
+
+type EvaluationDetailNavigationProp = NativeStackNavigationProp<
+    RootStackParamList, 
+    "EvaluationDetail"
+>;
 
 type Props = {
     route: EvaluationDetailProp;
@@ -19,7 +26,7 @@ export function EvaluationDetailScreen({ route }: Props) {
     const { evaluationId } = route.params;
 
     const { token }  = useAuth();
-
+    const navigation = useNavigation<EvaluationDetailNavigationProp>();
     const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -46,6 +53,35 @@ export function EvaluationDetailScreen({ route }: Props) {
 
         loadEvaluation();
     }, [token, evaluationId]);
+
+    function handleDelete() {
+        if (!token || !evaluation) {
+            return; 
+        }
+
+         Alert.alert(
+            "Delete Evaluation",
+            "Are you sure you want to delete this evaluation? This cannot be undone.",
+            [
+            {
+                text: "Cancel",
+                style: "cancel",
+            },
+            {
+                text: "Delete",
+                style: "destructive",
+                onPress: async () => {
+                try {
+                    await deleteEvaluation(token, evaluation.id);
+                    navigation.goBack();
+                } catch (err) {
+                    setError("Failed to delete evaluation.");
+                }
+                },
+            },
+            ]
+        );
+    }
 
     if (loading) {
         return (
@@ -85,7 +121,12 @@ export function EvaluationDetailScreen({ route }: Props) {
                     <SectionEyebrow onDark>Evaluation overview</SectionEyebrow>
                     <Text style={styles.heroTitle}>Evaluation #{evaluation.id}</Text>
                     <Text style={styles.heroSubtitle}>{evaluation.evaluation_date}</Text>
-
+                    <View style={styles.heroTopRow}>
+                        <StatusBadge label={evaluation.status} tone="dark" />
+                        <Pressable onPress={handleDelete} style={styles.deleteButton}>
+                            <Text style={styles.deleteButtonText}>Delete</Text>
+                        </Pressable>
+                    </View>
                     <View style={styles.metricRow}>
                         <View style={styles.metricCard}>
                             <Text style={styles.metricValue}>{evaluation.percentage}%</Text>
@@ -283,5 +324,23 @@ const styles = StyleSheet.create({
     imagePlaceholder: {
         ...typography.bodySm,
         color: colors.steel,
+    },
+    heroTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    },
+
+    deleteButton: {
+    backgroundColor: "#c62828",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    },
+
+    deleteButtonText: {
+    color: "white",
+    fontWeight: "700",
+    fontSize: 12,
     },
 });

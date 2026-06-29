@@ -108,3 +108,19 @@ export async function createEvaluation(
 
   return response.json();
 }
+
+export async function deleteEvaluation(
+    token: string,
+    evaluationId: number
+): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/evaluations/${evaluationId}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to delete evaluation.");
+    }
+}

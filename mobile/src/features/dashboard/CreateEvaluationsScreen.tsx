@@ -2,12 +2,14 @@ import * as ImagePicker from "expo-image-picker"
 
 import { useAuth } from "../auth/AuthContext";
 import React, { useState, useEffect } from "react";
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, View, Modal } from "react-native";
 import { RouteProp, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import SignatureCanvas from "react-native-signature-canvas";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChecklistTemplate, getActiveChecklistTemplate } from "../../api/checklistTemplates";
 import { createEvaluation, CreateEvaluationPayload } from "../../api/evaluations"
+import { uploadEvidence } from "../../api/uploads";
 
 import { RootStackParamList } from "../../navigation/types"
 import { colors, radii, spacing, typography } from "../../theme/designSystem";
@@ -51,6 +53,11 @@ export function CreateEvaluationScreen({ route }: Props) {
     const [generalComments, setGeneralComments] = useState("");
     const [siteInChargeName, setSiteInChargeName] = useState("");
     const [horticulturistInChargeName, setHorticulturistInChargeName] = useState("");
+    const [signatureModalVisible, setSignatureModalVisible] = useState(false); // Signature pad open/close
+    const [activeSigner, setActiveSigner] = useState<"site" | "horticulturist" | null>(null);
+
+    const [siteSignatureUri, setSiteSignatureUri] = useState<string | null>(null);
+    const [horticulturistSignatureUri, setHorticulturistSignatureUri] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -115,6 +122,10 @@ export function CreateEvaluationScreen({ route }: Props) {
             }
         }))
     }
+
+    function isRemoteImageUrl(uri: string): boolean {
+        return uri.startsWith("http://") || uri.startsWith("https://");
+    }
     
     async function pickImage(itemId: number) {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -138,13 +149,31 @@ export function CreateEvaluationScreen({ route }: Props) {
         updateImage(itemId, selectedUri);
     }
 
+    function openSignaturePad(signer: "site" | "horticulturist") {
+        setActiveSigner(signer);
+        setSignatureModalVisible(true);
+    }
+
+    function handleSignatureSaved(signatureUri: string) {
+        if (activeSigner === "site") {
+            setSiteSignatureUri(signatureUri);
+        } else if (activeSigner === "horticulturist") {
+            setHorticulturistSignatureUri(signatureUri);
+        }
+
+        setSignatureModalVisible(false);
+        setActiveSigner(null);
+    }
+
     // Converts the form data in React state into the exact object the backend expects when creating an evaluation.
-    function buildPayload(): CreateEvaluationPayload {
+    function buildPayload(
+        responsesToSubmit: Record<number, { score: string; remarks: string; image_url: string | null }>
+    ): CreateEvaluationPayload {
         if (!template) {
             throw new Error("Checklist template is missing");
         }
         
-        const formattedResponses = Object.entries(responses).map(
+        const formattedResponses = Object.entries(responsesToSubmit).map(
             ([itemId, response]) => ({
                 checklist_item_id: Number(itemId),
                 score: Number(response.score),
@@ -225,8 +254,27 @@ export function CreateEvaluationScreen({ route }: Props) {
             setFormError(null);
             
             
+            const uploadedResponses: Record<
+                number, 
+                {
+                    score: string;
+                    remarks: string;
+                    image_url: string | null; 
+                }
+            > = { ...responses }; // Makes a copy of responses
 
-            const payload = buildPayload();
+            for (const [itemId, response] of Object.entries(responses)) {
+                if (response.image_url && !isRemoteImageUrl(response.image_url)) {
+                    const uploadedImage = await uploadEvidence(token, response.image_url);
+                    
+                    uploadedResponses[Number(itemId)] = {
+                        ...response, 
+                        image_url: uploadedImage.url,
+                    }
+                }
+            }
+
+            const payload = buildPayload(uploadedResponses);
             const savedEvaluation = await createEvaluation(token, payload);
             navigation.replace("EvaluationDetail", {
                 evaluationId: savedEvaluation.id,
@@ -235,7 +283,11 @@ export function CreateEvaluationScreen({ route }: Props) {
             console.log("Created evaluation:", savedEvaluation.id);
 
         } catch (err) {
-            setFormError("Failed to create evaluation.");
+            if (err instanceof Error) {
+                setFormError(err.message);
+            } else {
+                setFormError("Failed to create evaluation");
+            }
         } finally {
             setSubmitting(false);
         }
@@ -412,14 +464,84 @@ export function CreateEvaluationScreen({ route }: Props) {
                         </SurfaceCard>
                     );
                 })}
+                <SurfaceCard style={styles.sectionCard}>
+                    <SectionEyebrow>Sign-off</SectionEyebrow>
+                    <Text style={styles.sectionTitle}>Required signatures</Text>
 
+                    <View style={styles.fieldGroup}>
+                        <FormLabel>Site In Charge Signature</FormLabel>
+                        <PillButton
+                        title={siteSignatureUri ? "Re-sign" : "Sign"}
+                        variant="secondary"
+                        onPress={() => openSignaturePad("site")}
+                        />
+                        {siteSignatureUri ? (
+                        <Image source={{ uri: siteSignatureUri }} style={styles.signaturePreview} />
+                        ) : (
+                        <Text style={styles.imagePlaceholder}>No signature added</Text>
+                        )}
+                    </View>
+
+                    <View style={styles.fieldGroup}>
+                        <FormLabel>Horticulturist Signature</FormLabel>
+                        <PillButton
+                            title={horticulturistSignatureUri ? "Re-sign" : "Sign"}
+                            variant="secondary"
+                            onPress={() => openSignaturePad("horticulturist")}
+                        />
+                        {horticulturistSignatureUri ? (
+                        <Image source={{ uri: horticulturistSignatureUri }} style={styles.signaturePreview} />
+                        ) : (
+                        <Text style={styles.imagePlaceholder}>No signature added</Text>
+                        )}
+                    </View>
+                </SurfaceCard>
                 <PillButton
                     title={submitting ? "Submitting..." : "Submit Evaluation"}
                     onPress={handleSubmit}
                     disabled={submitting}
                     style={styles.submitButton}
                 />
-            </ScrollView>    
+            </ScrollView>
+            <Modal
+                visible={signatureModalVisible}
+                animationType="slide"
+                transparent={false}
+                onRequestClose={() => {
+                    setSignatureModalVisible(false);
+                    setActiveSigner(null);
+                }}
+                >
+                <SafeAreaView style={styles.safeArea}>
+                    <Text>
+                    {activeSigner === "site"
+                        ? "Site In Charge Signature"
+                        : "Horticulturist Signature"}
+                    </Text>
+
+                    <SignatureCanvas
+                        onOK={handleSignatureSaved}
+                        onEmpty={() => setFormError("Please add a signature before saving.")}
+                        descriptionText={
+                            activeSigner === "site"
+                            ? "Site In Charge Signature"
+                            : "Horticulturist Signature"
+                        }
+                        clearText="Clear"
+                        confirmText="Save"
+                        autoClear
+                    />
+
+                    <PillButton
+                    title="Cancel"
+                    variant="secondary"
+                    onPress={() => {
+                        setSignatureModalVisible(false);
+                        setActiveSigner(null);
+                    }}
+                    />
+                </SafeAreaView>
+            </Modal>    
         </SafeAreaView>
     )
 }
@@ -541,5 +663,11 @@ const styles = StyleSheet.create({
     },
     submitButton: {
         marginTop: spacing.sm,
+    },
+    signaturePreview: {
+        width: "100%",
+        height: 140,
+        borderRadius: radii.lg,
+        backgroundColor: colors.surfaceSoft,
     },
 });

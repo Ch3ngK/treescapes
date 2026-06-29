@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { RouteProp, useNavigation } from "@react-navigation/native";
+import { RouteProp, useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -66,9 +66,13 @@ export function SiteDetailScreen({ route }: Props) {
     }
   }
 
-  useEffect(() => {
-    void loadEvaluations();
-  }, [token, siteId]);
+  // useFocusEffect is used here so that whenever SiteDetailScreen becomes active again, it will run loadEvaluations()
+  // React.useCallback is a react hook that remembers a function so React does not create a new one on every render. 
+  useFocusEffect(
+    React.useCallback(() => {
+      void loadEvaluations();
+    }, [token, siteId])
+  );
 
   if (loading) {
     return (
