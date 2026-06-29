@@ -1,16 +1,15 @@
+import { fetch } from "expo/fetch";
+import { File } from "expo-file-system";
+
 import { API_BASE_URL } from "./config";
 
 export async function uploadEvidence(
     token: string, 
     imageUri: string
 ): Promise<{ url: string; storage_path: string }> {
-    const formData = new FormData(); // FormData is the normal way to send files in a HTTP request. Since it is an image, do not send plain JSON here. 
-
-    formData.append("file", {
-        uri: imageUri, 
-        name: "evidence.jpg",
-        type: "image/jpeg",
-    } as any);
+    const file = new File(imageUri);
+    const formData = new FormData();
+    formData.append("file", file);
 
     const response = await fetch(`${API_BASE_URL}/uploads/evidence`, {
         method: "POST",
@@ -18,10 +17,11 @@ export async function uploadEvidence(
             Authorization: `Bearer ${token}`,
         },
         body: formData,
-    })
+    });
 
     if (!response.ok) {
-        throw new Error("Failed to upload image.");
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to upload image.");
     }
 
     return response.json();
