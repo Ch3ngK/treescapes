@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, Numeric, Text
+from sqlalchemy import ForeignKey, Numeric, Text, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -16,3 +16,4 @@ class EvaluationResponse(Base):
 
     evaluation = relationship("Evaluation", back_populates="responses")
     checklist_item = relationship("ChecklistItem")
+    image_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)

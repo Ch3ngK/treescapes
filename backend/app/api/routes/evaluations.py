@@ -114,6 +114,8 @@ def create_evaluation(
         general_comments=payload.general_comments,
         site_in_charge_name=payload.site_in_charge_name,
         horticulturist_in_charge_name=payload.horticulturist_in_charge_name,
+        site_in_charge_signature_url=payload.site_in_charge_signature_url,
+        horticulturist_in_charge_signature_url=payload.horticulturist_in_charge_signature_url,
         status="submitted",
     )
 
@@ -126,6 +128,7 @@ def create_evaluation(
             checklist_item_id=response.checklist_item_id,
             score=response.score,
             remarks=response.remarks,
+            image_url=response.image_url,
         )
         db.add(evaluation_response)
 
@@ -206,3 +209,43 @@ def get_evaluation(
             )
 
     return evaluation
+
+@router.delete("/{evaluation_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_evaluations(
+    evaluation_id: int, 
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> None:
+    evaluation = (
+        db.query(Evaluation)
+        .options(selectinload(Evaluation.responses))
+        .filter(Evaluation.id == evaluation_id)
+        .first()
+    )
+
+    if evaluation is None: 
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Evaluation not found.",
+        )
+
+    if current_user.role != "treescapes_admin":
+        site = db.query(Site).filter(Site.id == evaluation.site_id).first()
+
+        if site is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Site not found for this evaluation.",
+            )
+        
+        if site.management_company_id != current_user.management_company_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You cannot delete this evaluation.",
+            )
+
+    for response in evaluation.responses:
+        db.delete(response) 
+
+    db.delete(evaluation)
+    db.commit()

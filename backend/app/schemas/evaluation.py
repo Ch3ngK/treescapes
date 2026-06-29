@@ -9,6 +9,7 @@ class EvaluationResponseCreate(BaseModel):
     checklist_item_id: int
     score: float 
     remarks: str | None = None 
+    image_url: str | None = None
 
 # For whole evaluation submission
 class EvaluationCreate(BaseModel):
@@ -18,6 +19,8 @@ class EvaluationCreate(BaseModel):
     general_comments: str | None = None
     site_in_charge_name: str | None = None 
     horticulturist_in_charge_name: str | None = None 
+    site_in_charge_signature_url: str | None = None
+    horticulturist_in_charge_signature_url: str| None = None
     responses: list[EvaluationResponseCreate]
 
 class EvaluationResponseRead(BaseModel): 
@@ -26,6 +29,7 @@ class EvaluationResponseRead(BaseModel):
     checklist_item: ChecklistItemRead
     score: float 
     remarks: str | None = None
+    image_url: str | None = None
     model_config = {"from_attributes": True}
 
 class EvaluationRead(BaseModel):
@@ -42,5 +46,7 @@ class EvaluationRead(BaseModel):
     horticulturist_in_charge_name: str | None
     status: str
     responses: list[EvaluationResponseRead] = []
+    site_in_charge_signature_url: str | None = None
+    horticulturist_in_charge_signature_url: str| None = None
 
     model_config = {"from_attributes": True}

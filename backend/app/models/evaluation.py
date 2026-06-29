@@ -24,7 +24,9 @@ class Evaluation(Base):
     general_comments: Mapped[str | None] = mapped_column(Text, nullable=True)
     site_in_charge_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     horticulturist_in_charge_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-
+    site_in_charge_signature_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    horticulturist_in_charge_signature_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="submitted")
 
     site = relationship("Site")
